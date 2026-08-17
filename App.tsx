@@ -1,9 +1,13 @@
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Linking, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, I18nManager, Linking, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { WebView, type WebViewNavigation } from "react-native-webview";
 import type { WebViewProgressEvent } from "react-native-webview/lib/WebViewTypes";
 
+// The wrapped Bloom web application loads Vazirmatn itself; the native shell
+// explicitly enables Persian RTL so loading/error surfaces match the web UI.
+I18nManager.allowRTL(true);
+I18nManager.forceRTL(true);
 const WEB_APP_URL = process.env.EXPO_PUBLIC_WEB_APP_URL ?? "https://bloomplan-sfqewszz.manus.space";
 const LOAD_TIMEOUT_MS = 12_000;
 
@@ -80,9 +84,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fffaf6" },
   overlay: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center", backgroundColor: "#fffaf6" },
   loading: { alignItems: "center", justifyContent: "center", gap: 14, padding: 24 },
-  loadingText: { color: "#7c3045", fontSize: 15, textAlign: "center" },
+  loadingText: { color: "#7c3045", fontSize: 15, textAlign: "center", writingDirection: "rtl" },
   errorCard: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center", padding: 28, backgroundColor: "#fffaf6" },
-  errorTitle: { color: "#512435", fontSize: 21, fontWeight: "700", textAlign: "center", marginBottom: 10 },
-  errorText: { color: "#805f68", fontSize: 15, lineHeight: 24, textAlign: "center", marginBottom: 20 },
+  errorTitle: { color: "#512435", fontSize: 21, fontWeight: "700", textAlign: "center", writingDirection: "rtl", marginBottom: 10 },
+  errorText: { color: "#805f68", fontSize: 15, lineHeight: 24, textAlign: "center", writingDirection: "rtl", marginBottom: 20 },
   retry: { color: "#fffaf6", backgroundColor: "#7c3045", paddingVertical: 13, paddingHorizontal: 28, borderRadius: 14, overflow: "hidden", fontWeight: "700" },
 });
