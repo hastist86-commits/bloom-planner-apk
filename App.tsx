@@ -9,7 +9,7 @@ import type { WebViewProgressEvent } from "react-native-webview/lib/WebViewTypes
 I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
 const WEB_APP_URL = process.env.EXPO_PUBLIC_WEB_APP_URL ?? "https://bloomplan-sfqewszz.manus.space";
-const LOAD_TIMEOUT_MS = 12_000;
+const LOAD_TIMEOUT_MS = 6_000;
 
 export default function App() {
   const [loading, setLoading] = useState(true);
