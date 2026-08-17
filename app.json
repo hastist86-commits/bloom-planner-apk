@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Bloom Planner",
+    "slug": "bloom-planner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "bloomplanner",
+    "ios": { "supportsTablet": true },
+    "android": {
+      "package": "com.bloomplanner.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#f8eee9",
+        "foregroundImage": "./android-icon-foreground.png",
+        "backgroundImage": "./android-icon-background.png",
+        "monochromeImage": "./android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": { "bundler": "metro", "favicon": "./favicon.png" }
+  }
+}
