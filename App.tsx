@@ -12,7 +12,7 @@ I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
 Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: true }) });
 const WEB_APP_URL = process.env.EXPO_PUBLIC_WEB_APP_URL ?? "https://bloomplan-sfqewszz.manus.space";
-const LOAD_TIMEOUT_MS = 6_000;
+const LOAD_TIMEOUT_MS = 8_000;
 
 async function registerForPushNotificationsAsync() {
   if (!Device.isDevice) return null;
@@ -43,6 +43,7 @@ export default function App() {
   useEffect(() => {
     const timeout = setTimeout(() => {
       setLoading(false);
+      setFailed(true);
     }, LOAD_TIMEOUT_MS);
     return () => clearTimeout(timeout);
   }, [webViewKey]);
@@ -79,6 +80,10 @@ export default function App() {
           ref={webViewRef}
           key={webViewKey}
           source={{ uri: WEB_APP_URL }}
+          javaScriptEnabled
+          domStorageEnabled
+          startInLoadingState={false}
+          cacheMode="LOAD_NO_CACHE"
           originWhitelist={["*"]}
           onLoadStart={() => { setLoading(true); setFailed(false); }}
           onLoadProgress={handleProgress}
@@ -88,13 +93,11 @@ export default function App() {
           onShouldStartLoadWithRequest={handleNavigation}
           sharedCookiesEnabled
           thirdPartyCookiesEnabled
-          javaScriptEnabled
-          domStorageEnabled
-          cacheEnabled
+          cacheEnabled={false}
           allowsBackForwardNavigationGestures
           setSupportMultipleWindows={false}
         />
-        {loading && <View pointerEvents="none" style={styles.overlay}><Loading /></View>}
+          {loading && <View pointerEvents="none" style={styles.overlay}><Loading /></View>}
         {failed && <View style={styles.errorCard}>
           <Text style={styles.errorTitle}>اتصال به Bloom Planner برقرار نشد</Text>
           <Text style={styles.errorText}>اتصال اینترنت یا آدرس نسخه آنلاین برنامه در دسترس نیست.</Text>
