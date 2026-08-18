@@ -12,7 +12,7 @@ I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
 Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: true }) });
 const WEB_APP_URL = process.env.EXPO_PUBLIC_WEB_APP_URL ?? "https://bloomplan-sfqewszz.manus.space";
-const LOAD_TIMEOUT_MS = 8_000;
+const LOAD_TIMEOUT_MS = 20_000;
 
 async function registerForPushNotificationsAsync() {
   if (!Device.isDevice) return null;
@@ -53,6 +53,9 @@ export default function App() {
     setLoading(true);
     setWebViewKey(value => value + 1);
   }, []);
+  const openInBrowser = useCallback(() => {
+    void Linking.openURL(WEB_APP_URL);
+  }, []);
 
   const handleNavigation = useCallback((request: WebViewNavigation) => {
     const target = request.url;
@@ -89,7 +92,7 @@ export default function App() {
           onLoadProgress={handleProgress}
           onLoadEnd={() => { setLoading(false); handoffPushToken(); }}
           onError={() => { setLoading(false); setFailed(true); }}
-          onHttpError={() => { setLoading(false); setFailed(true); }}
+          onHttpError={event => { if (event.nativeEvent.statusCode >= 400) { setLoading(false); setFailed(true); } }}
           onShouldStartLoadWithRequest={handleNavigation}
           sharedCookiesEnabled
           thirdPartyCookiesEnabled
@@ -100,8 +103,8 @@ export default function App() {
           {loading && <View pointerEvents="none" style={styles.overlay}><Loading /></View>}
         {failed && <View style={styles.errorCard}>
           <Text style={styles.errorTitle}>اتصال به Bloom Planner برقرار نشد</Text>
-          <Text style={styles.errorText}>اتصال اینترنت یا آدرس نسخه آنلاین برنامه در دسترس نیست.</Text>
-          <Text onPress={reload} style={styles.retry}>تلاش دوباره</Text>
+          <Text style={styles.errorText}>بارگذاری داخل برنامه طول کشید. ممکن است WebView گوشی با این صفحه سازگار نباشد؛ اینترنت گوشی لزوماً قطع نیست.</Text>
+          <View style={styles.actions}><Text onPress={reload} style={styles.retry}>تلاش دوباره</Text><Text onPress={openInBrowser} style={styles.browserButton}>باز کردن در مرورگر</Text></View>
         </View>}
       </View>
     </SafeAreaView>
@@ -121,5 +124,7 @@ const styles = StyleSheet.create({
   errorCard: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center", padding: 28, backgroundColor: "#fffaf6" },
   errorTitle: { color: "#512435", fontSize: 21, fontWeight: "700", textAlign: "center", writingDirection: "rtl", marginBottom: 10 },
   errorText: { color: "#805f68", fontSize: 15, lineHeight: 24, textAlign: "center", writingDirection: "rtl", marginBottom: 20 },
-  retry: { color: "#fffaf6", backgroundColor: "#7c3045", paddingVertical: 13, paddingHorizontal: 28, borderRadius: 14, overflow: "hidden", fontWeight: "700" },
+  actions: { flexDirection: "row", alignItems: "center", gap: 10 },
+  retry: { color: "#fffaf6", backgroundColor: "#7c3045", paddingVertical: 13, paddingHorizontal: 22, borderRadius: 14, overflow: "hidden", fontWeight: "700" },
+  browserButton: { color: "#7c3045", borderColor: "#7c3045", borderWidth: 1, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 14, overflow: "hidden", fontWeight: "700" },
 });
