@@ -1,5 +1,7 @@
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useState } from "react";
+import * as Device from "expo-device";
+import * as Notifications from "expo-notifications";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, I18nManager, Linking, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { WebView, type WebViewNavigation } from "react-native-webview";
 import type { WebViewProgressEvent } from "react-native-webview/lib/WebViewTypes";
@@ -8,13 +10,35 @@ import type { WebViewProgressEvent } from "react-native-webview/lib/WebViewTypes
 // explicitly enables Persian RTL so loading/error surfaces match the web UI.
 I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
+Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: true }) });
 const WEB_APP_URL = process.env.EXPO_PUBLIC_WEB_APP_URL ?? "https://bloomplan-sfqewszz.manus.space";
 const LOAD_TIMEOUT_MS = 6_000;
+
+async function registerForPushNotificationsAsync() {
+  if (!Device.isDevice) return null;
+  const current = await Notifications.getPermissionsAsync();
+  const status = current.status === "granted" ? current.status : (await Notifications.requestPermissionsAsync()).status;
+  if (status !== "granted") return null;
+  const token = await Notifications.getExpoPushTokenAsync({ projectId: "23e48afd-8f1c-4dfd-a915-75948af175b7" });
+  return token.data;
+}
 
 export default function App() {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [webViewKey, setWebViewKey] = useState(0);
+  const [pushToken, setPushToken] = useState<string | null>(null);
+  const webViewRef = useRef<WebView>(null);
+
+  useEffect(() => {
+    void registerForPushNotificationsAsync().then(setPushToken).catch(() => setPushToken(null));
+    const received = Notifications.addNotificationReceivedListener(() => undefined);
+    const response = Notifications.addNotificationResponseReceivedListener(event => {
+      const url = event.notification.request.content.data?.url;
+      if (typeof url === "string") void Linking.openURL(url);
+    });
+    return () => { received.remove(); response.remove(); };
+  }, []);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -41,18 +65,24 @@ export default function App() {
   const handleProgress = useCallback((event: WebViewProgressEvent) => {
     if (event.nativeEvent.progress >= 0.6) setLoading(false);
   }, []);
+  const handoffPushToken = useCallback(() => {
+    if (!pushToken) return;
+    const encoded = JSON.stringify(pushToken);
+    webViewRef.current?.injectJavaScript(`window.dispatchEvent(new CustomEvent('bloom-native-push-token',{detail:{token:${encoded},platform:'android'}})); true;`);
+  }, [pushToken]);
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="dark" />
       <View style={styles.container}>
         <WebView
+          ref={webViewRef}
           key={webViewKey}
           source={{ uri: WEB_APP_URL }}
           originWhitelist={["*"]}
           onLoadStart={() => { setLoading(true); setFailed(false); }}
           onLoadProgress={handleProgress}
-          onLoadEnd={() => setLoading(false)}
+          onLoadEnd={() => { setLoading(false); handoffPushToken(); }}
           onError={() => { setLoading(false); setFailed(true); }}
           onHttpError={() => { setLoading(false); setFailed(true); }}
           onShouldStartLoadWithRequest={handleNavigation}
