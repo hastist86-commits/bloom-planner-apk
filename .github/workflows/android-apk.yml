@@ -12,6 +12,7 @@ on:
       - 'index.ts'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/android-apk.yml'
 
 permissions:
