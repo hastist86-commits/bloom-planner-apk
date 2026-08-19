@@ -1,0 +1,92 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'App.tsx'
+      - 'app.json'
+      - 'eas.json'
+      - 'index.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    name: Build release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build tools
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Generate native Android project
+        run: pnpm exec expo prebuild --platform android --no-install
+
+      - name: Build release APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bloom-planner-${{ github.sha }}-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload build metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: bloom-planner-${{ github.sha }}-metadata
+          path: |
+            app.json
+            package.json
+            pnpm-lock.yaml
+          retention-days: 30
+
+      - name: Write job summary
+        run: |
+          {
+            echo "## Bloom Planner APK"
+            echo ""
+            echo "Source commit: `${GITHUB_SHA}`"
+            echo ""
+            echo "The release APK is available in the workflow run artifacts under **bloom-planner-${GITHUB_SHA}-apk**."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
