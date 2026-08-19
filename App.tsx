@@ -92,7 +92,7 @@ export default function App() {
           onLoadProgress={handleProgress}
           onLoadEnd={() => { setLoading(false); handoffPushToken(); }}
           onError={() => { setLoading(false); setFailed(true); }}
-          onHttpError={event => { if (event.nativeEvent.statusCode >= 400) { setLoading(false); setFailed(true); } }}
+          // Do not treat subresource/API HTTP errors as a failed document; the web app can still render and let the user sign in.
           onShouldStartLoadWithRequest={handleNavigation}
           sharedCookiesEnabled
           thirdPartyCookiesEnabled
