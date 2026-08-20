@@ -29,6 +29,12 @@ export default function App() {
   const [webViewKey, setWebViewKey] = useState(0);
   const [pushToken, setPushToken] = useState<string | null>(null);
   const webViewRef = useRef<WebView>(null);
+  const failureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const documentStartedRef = useRef(false);
+  const clearFailureTimer = useCallback(() => {
+    if (failureTimerRef.current) clearTimeout(failureTimerRef.current);
+    failureTimerRef.current = null;
+  }, []);
 
   useEffect(() => {
     void registerForPushNotificationsAsync().then(setPushToken).catch(() => setPushToken(null));
@@ -42,8 +48,10 @@ export default function App() {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      setLoading(false);
-      setFailed(true);
+      if (!documentStartedRef.current) {
+        setLoading(false);
+        setFailed(true);
+      }
     }, LOAD_TIMEOUT_MS);
     return () => clearTimeout(timeout);
   }, [webViewKey]);
@@ -67,8 +75,13 @@ export default function App() {
   }, []);
 
   const handleProgress = useCallback((event: WebViewProgressEvent) => {
+    if (event.nativeEvent.progress >= 0.1) {
+      documentStartedRef.current = true;
+      clearFailureTimer();
+      setFailed(false);
+    }
     if (event.nativeEvent.progress >= 0.6) setLoading(false);
-  }, []);
+  }, [clearFailureTimer]);
   const handoffPushToken = useCallback(() => {
     if (!pushToken) return;
     const encoded = JSON.stringify(pushToken);
@@ -86,12 +99,12 @@ export default function App() {
           javaScriptEnabled
           domStorageEnabled
           startInLoadingState={false}
-          cacheMode="LOAD_NO_CACHE"
+          cacheMode="LOAD_DEFAULT"
           originWhitelist={["*"]}
-          onLoadStart={() => { setLoading(true); setFailed(false); }}
+          onLoadStart={() => { documentStartedRef.current = false; clearFailureTimer(); setLoading(true); setFailed(false); }}
           onLoadProgress={handleProgress}
-          onLoadEnd={() => { setLoading(false); handoffPushToken(); }}
-          onError={() => { setLoading(false); setFailed(true); }}
+          onLoadEnd={() => { documentStartedRef.current = true; clearFailureTimer(); setLoading(false); setFailed(false); handoffPushToken(); }}
+          onError={() => { clearFailureTimer(); failureTimerRef.current = setTimeout(() => { if (!documentStartedRef.current) { setLoading(false); setFailed(true); } }, 5000); }}
           // Do not treat subresource/API HTTP errors as a failed document; the web app can still render and let the user sign in.
           onShouldStartLoadWithRequest={handleNavigation}
           sharedCookiesEnabled
