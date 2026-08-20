@@ -16,7 +16,7 @@ on:
       - '.github/workflows/android-apk.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-apk:
@@ -79,14 +79,45 @@ jobs:
             pnpm-lock.yaml
           retention-days: 30
 
+      - name: Prepare release metadata
+        id: release
+        run: |
+          version=$(node -p "require('./app.json').expo.version")
+          tag="v${version}-build.${GITHUB_RUN_NUMBER}"
+          apk=$(find android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)
+          if [ -z "$apk" ]; then
+            echo "No release APK found" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_APK: ${{ steps.release.outputs.apk }}
+        run: |
+          gh release create "$RELEASE_TAG" "$RELEASE_APK#Bloom Planner ${RELEASE_VERSION} APK" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Bloom Planner ${RELEASE_VERSION} APK" \
+            --notes "Automated Android APK build from commit ${GITHUB_SHA}. Download the APK from the Assets section below."
+
       - name: Write job summary
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
           {
             echo "## Bloom Planner APK"
             echo ""
+            echo "Version: **${RELEASE_VERSION}**"
+            echo ""
             echo "Source commit: `${GITHUB_SHA}`"
             echo ""
-            echo "The release APK is available in the workflow run artifacts under **bloom-planner-${GITHUB_SHA}-apk**."
+            echo "GitHub Release: [${RELEASE_TAG}](https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_TAG})"
           } >> "$GITHUB_STEP_SUMMARY"
 
 concurrency:
